@@ -5,7 +5,6 @@ import models as m
 import torch
 import torch.optim as optim
 import yaml
-from logger import Logger, ModelLogger
 from trainers import Trainer
 import sys
 import numpy as np
@@ -22,14 +21,6 @@ def build_optimizer(opt_type, model, args):
     return opt_class(**args)
 
 
-def build_loggers(log_folder):
-    if not os.path.exists(log_folder):
-        os.makedirs(log_folder)
-    model_logger = ModelLogger(log_folder, torch.save)
-    scalar_logger = Logger(log_folder)
-    return scalar_logger, model_logger
-
-
 def worker_init_fn(worker_id):
     np.random.seed(np.random.get_state()[1][0] + worker_id)
 
@@ -37,20 +28,18 @@ def worker_init_fn(worker_id):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', '-c', help='Yaml config with training parameters', required=True)
-    parser.add_argument('--log_folder', '-l', help='Log folder', required=True)
+    # parser.add_argument('--log_folder', '-l', help='Log folder', required=True)
     parser.add_argument('--data_root', '-r', help='Data root folder', required=True)
     parser.add_argument('--log_interval', '-i', type=int, help='Log interval', required=True)
     args = parser.parse_args()
 
-    args_log_folder = args.data_root + "/" + args.log_folder
+    # args_log_folder = args.data_root + "/" + args.log_folder
 
     with open(args.config, 'r') as f:
         job_description = yaml.load(f, Loader=yaml.FullLoader)
 
     config = job_description['job']
-    scalar_logger, model_logger = build_loggers(args_log_folder)
 
-    model_logger.copy_file(args.config)
     device = config.get('device') or 'cpu'
 
     # Check 'training_dataset' parameters
@@ -118,7 +107,6 @@ if __name__ == "__main__":
         reconstruction_weight=config['trainer']['reconstruction_weight'],
         adversarial_weight=config['trainer']['adversarial_weight'],
         log_interval=args.log_interval,
-        model_logger=model_logger, scalar_logger=scalar_logger,
         perception_loss_model=perception_loss_model,
         perception_loss_weight=perception_loss_weight,
         use_image_loss=config['trainer']['use_image_loss'],

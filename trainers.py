@@ -15,7 +15,7 @@ class Trainer(object):
     def __init__(self,
                  train_loader, data_for_dataloader, opt_discriminator, opt_generator,
                  reconstruction_criterion, adversarial_criterion, reconstruction_weight,
-                 adversarial_weight, log_interval, scalar_logger, model_logger,
+                 adversarial_weight, log_interval, 
                  perception_loss_model,  perception_loss_weight, use_image_loss, device
                  ):
 
@@ -31,10 +31,6 @@ class Trainer(object):
         self.reconstruction_weight = reconstruction_weight
         self.adversarial_weight = adversarial_weight
 
-        self.scalar_logger = scalar_logger
-        self.model_logger = model_logger
-
-        self.training_log = {}
         self.log_interval = log_interval
 
         self.perception_loss_weight = perception_loss_weight
@@ -135,12 +131,6 @@ class Trainer(object):
 
                 self.opt_generator.step()
 
-                # log losses
-                current_log = {key: value.item() for key, value in six.iteritems(locals()) if
-                               'loss' in key and isinstance(value, Variable)}
-
-                self.add_log(current_log)
-
                 batch_num += 1
 
                 if batch_num % 100 == 0:
@@ -151,37 +141,13 @@ class Trainer(object):
                     eval_start = time.time()
                     generator.eval()
                     self.test_on_full_image(generator, batch_num, data_root, config_yaml_name)
-                    self.flush_scalar_log(batch_num, time.time() - start)
-                    self.model_logger.save(generator, save_num, True)
-                    #self.model_logger.save(discriminator, save_num, False)
+                    
                     save_num += 1
                     print(f"Eval of batch: {batch_num} took {(time.time() - eval_start)}", flush=True)
 
                     #if batch_num > 5000:
                     #    sys.exit(0)
 
-        self.model_logger.save(generator, 99999)
-
-    # Accumulates the losses
-    def add_log(self, log):
-        for k, v in log.items():
-            if k in self.training_log:
-                self.training_log[k] += v
-            else:
-                self.training_log[k] = v
-
-    # Divide the losses by log_interval and print'em
-    def flush_scalar_log(self, batch_num, took):
-        for key in self.training_log.keys():
-            self.scalar_logger.scalar_summary(key, self.training_log[key] / self.log_interval, batch_num)
-
-        log = "[%d]" % batch_num
-        for key in sorted(self.training_log.keys()):
-            log += " [%s] % 7.4f" % (key, self.training_log[key] / self.log_interval)
-
-        log += ". Took {}".format(took)
-        print(log, flush=True)
-        self.training_log = {}
 
     # Test the intermediate model on data from _gen folder
     def test_on_full_image(self, generator, batch_num, data_root, config_yaml_name):
